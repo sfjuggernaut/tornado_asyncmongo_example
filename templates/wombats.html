@@ -1,0 +1,14 @@
+<html>
+  <head>
+  </head>
+  <body>
+    WOMBATS
+    <ul>
+      {% for wombat in wombats %}
+        {% block wombat %}
+          <li>{{ escape(wombat['name']) }}</li>
+        {% end %}
+      {% end %}
+    </ul>
+  </body>
+</html>
