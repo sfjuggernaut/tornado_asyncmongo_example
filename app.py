@@ -3,6 +3,21 @@ import asyncmongo
 import tornado.web
 import tornado.ioloop
 import json
+from bson.objectid import ObjectId
+
+import pdb
+
+class MongoDBEncoder(json.JSONEncoder):
+    "Convert non-JSON serializable Mongo related objs to something serializable"
+    def default(self, obj):
+        if obj is None:
+            return obj
+        elif isinstance(obj, ObjectId):
+            return str(obj)
+        elif isinstance(obj, datetime.datetime):
+            return str(obj)
+        else:
+            return json.JSONEncoder.default(self, obj)
 
 class BaseHandler(tornado.web.RequestHandler):
     @property
@@ -29,23 +44,27 @@ class WombatsHandler(BaseHandler):
 
 class JSONWombatsHandler(BaseHandler):
     @tornado.web.asynchronous
-    def get(self):
-        self.db.wombats.find({}, {"_id" : 0}, limit = 5, callback = self._get_response)
+    def get(self, id = None):
+        if  id == None:
+            self.db.wombats.find({}, limit = 5, callback = self._get_response)
+        else:
+            self.db.wombats.find_one({'id': int(id)}, callback = self._get_response)
 
     def _get_response(self, response, error):
         if error:
             raise tornado.web.HTTPerror(500)
         self.set_header('Content-Type', 'application/json')
-        self.write(json.dumps(response))
+        self.write(json.dumps(response, cls = MongoDBEncoder))
         self.finish()
 
 class Application(tornado.web.Application):
     def __init__(self):
         # XXX: there's got to be a better way to handle different formats
         handlers = [
-            (r"/",                      RootHandler),
-            (r"/wombats.json",          JSONWombatsHandler),
-            (r"/wombats",               WombatsHandler),
+            (r"/",                              RootHandler),
+            (r"/wombats.json",                  JSONWombatsHandler),
+            (r"/wombats",                       WombatsHandler),
+            (r"/wombats/([A-Za-z0-9-]+).json",  JSONWombatsHandler),
         ]
         settings = dict(
             debug           = True,
@@ -70,5 +89,5 @@ def main():
     application.listen(8888)
     tornado.ioloop.IOLoop.instance().start()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

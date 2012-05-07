@@ -1,4 +1,5 @@
 venv
 *.pyc
 notes.txt
+test.txt
 build
